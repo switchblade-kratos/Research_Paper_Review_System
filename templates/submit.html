@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Submit a paper</h2>
+<form method="post" action="/submit" class="narrow">
+  <label>Title <input name="title" minlength="5" required></label>
+  <label>Domain
+    <select name="domain_id" required>
+      {% for d in domains %}<option value="{{ d.domain_id }}">{{ d.name }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Abstract <textarea name="abstract" rows="8" minlength="20" required></textarea></label>
+  <label>Co-author emails (comma separated, must be registered authors)
+    <input name="coauthors">
+  </label>
+  <button type="submit">Submit</button>
+</form>
+{% endblock %}

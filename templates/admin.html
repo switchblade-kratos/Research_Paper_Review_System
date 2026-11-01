@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Admin</h2>
+
+<h3>Papers by status</h3>
+<table>
+  <tr><th>Status</th><th>Count</th></tr>
+  {% for s in r.status_counts %}<tr><td>{{ s.status }}</td><td>{{ s.n }}</td></tr>{% endfor %}
+</table>
+
+<h3>Domain statistics <small>(CTE)</small></h3>
+<table>
+  <tr><th>Domain</th><th>Total</th><th>Accepted</th><th>Rejected</th><th>Unreviewed</th><th>Acceptance %</th></tr>
+  {% for d in r.domain_stats %}
+  <tr><td>{{ d.domain }}</td><td>{{ d.total }}</td><td>{{ d.accepted }}</td><td>{{ d.rejected }}</td>
+      <td>{{ d.unreviewed }}</td><td>{{ d.acceptance_pct if d.acceptance_pct is not none else '-' }}</td></tr>
+  {% endfor %}
+</table>
+
+<h3>Reviewer workload <small>(GROUP BY + HAVING)</small></h3>
+<form method="get" action="/admin" class="inline">
+  <label>Only reviewers with at least <input type="number" name="min_reviews" min="1" value="{{ min_reviews }}" size="3"> reviews</label>
+  <button type="submit">Apply</button>
+</form>
+<table>
+  <tr><th>Reviewer</th><th>Domain</th><th>Reviews</th><th>Avg given</th><th>Lowest</th><th>Highest</th></tr>
+  {% for w in r.workload %}
+  <tr><td>{{ w.reviewer }}</td><td>{{ w.domain }}</td><td>{{ w.reviews_done }}</td>
+      <td>{{ w.avg_score_given }}</td><td>{{ w.lowest }}</td><td>{{ w.highest }}</td></tr>
+  {% endfor %}
+</table>
+
+<h3>Papers above their domain's average <small>(nested subquery)</small></h3>
+<table>
+  <tr><th>ID</th><th>Title</th><th>Domain</th><th>Avg score</th></tr>
+  {% for p in r.above_avg %}
+  <tr><td>{{ p.paper_id }}</td><td><a href="/papers/{{ p.paper_id }}">{{ p.title }}</a></td>
+      <td>{{ p.domain }}</td><td>{{ p.avg_score }}</td></tr>
+  {% endfor %}
+</table>
+
+<h3>Create reviewer / admin</h3>
+<form method="post" action="/admin/users" class="narrow">
+  <label>Full name <input name="full_name" required></label>
+  <label>Email <input type="email" name="email" required></label>
+  <label>Password <input type="password" name="password" minlength="6" required></label>
+  <label>Role
+    <select name="role"><option value="reviewer">reviewer</option><option value="admin">admin</option></select>
+  </label>
+  <label>Domain (required for reviewers)
+    <select name="domain_id">
+      <option value="">none</option>
+      {% for d in domains %}<option value="{{ d.domain_id }}">{{ d.name }}</option>{% endfor %}
+    </select>
+  </label>
+  <button type="submit">Create</button>
+</form>
+
+<h3>Recent changes <small>(audit log, filled by triggers)</small></h3>
+<table>
+  <tr><th>Table</th><th>Action</th><th>Row</th><th>When</th></tr>
+  {% for a in r.audit %}
+  <tr><td>{{ a.table_name }}</td><td>{{ a.action }}</td><td>{{ a.row_id }}</td><td>{{ a.changed_at.strftime('%Y-%m-%d %H:%M') }}</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

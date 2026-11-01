@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>
+  {% if user.role == 'author' %}My papers{% elif user.role == 'reviewer' %}Papers in my domain{% else %}All papers{% endif %}
+</h2>
+
+<form method="get" action="/dashboard" class="filters">
+  <label>Keyword <input name="keyword" value="{{ f.keyword or '' }}"></label>
+  <label>Status
+    <select name="status">
+      <option value="">any</option>
+      {% for s in statuses %}<option value="{{ s }}" {% if f.status == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+    </select>
+  </label>
+  {% if user.role == 'admin' %}
+  <label>Domain
+    <select name="domain_id">
+      <option value="">any</option>
+      {% for d in domains %}<option value="{{ d.domain_id }}" {% if f.domain_id == d.domain_id|string %}selected{% endif %}>{{ d.name }}</option>{% endfor %}
+    </select>
+  </label>
+  {% endif %}
+  <label>Year from <input name="year_from" size="5" value="{{ f.year_from or '' }}"></label>
+  <label>to <input name="year_to" size="5" value="{{ f.year_to or '' }}"></label>
+  <label>Min score <input name="min_score" size="4" value="{{ f.min_score or '' }}"></label>
+  <label>Sort
+    <select name="sort">
+      {% for s in sorts %}<option value="{{ s }}" {% if f.sort == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+    </select>
+  </label>
+  <button type="submit">Apply</button>
+  <a href="/dashboard">Clear</a>
+</form>
+
+{% if f.error %}<p class="err">{{ f.error }}</p>{% endif %}
+
+<table>
+  <tr><th>ID</th><th>Title</th><th>Domain</th><th>Status</th><th>Submitted</th><th>Avg score</th><th>Reviews</th></tr>
+  {% for p in papers %}
+  <tr>
+    <td>{{ p.paper_id }}</td>
+    <td><a href="/papers/{{ p.paper_id }}">{{ p.title }}</a></td>
+    <td>{{ p.domain_name }}</td>
+    <td>{{ p.status }}</td>
+    <td>{{ p.submitted_at }}</td>
+    <td>{{ p.avg_score if p.avg_score is not none else '-' }}</td>
+    <td>{{ p.review_count }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="7">No papers match.</td></tr>
+  {% endfor %}
+</table>
+
+<p class="pager">
+  {% if page > 1 %}<a href="/dashboard?{{ base_qs }}&page={{ page - 1 }}">&larr; Previous</a>{% endif %}
+  Page {{ page }}
+  {% if has_next %}<a href="/dashboard?{{ base_qs }}&page={{ page + 1 }}">Next &rarr;</a>{% endif %}
+</p>
+{% endblock %}

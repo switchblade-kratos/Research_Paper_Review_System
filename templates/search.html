@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Find relevant papers</h2>
+<p>Describe what you are looking for. Results are ranked by meaning (cosine similarity), not exact words.</p>
+<form method="get" action="/search" class="inline">
+  <input name="q" value="{{ q }}" size="60" placeholder="e.g. graph neural networks for traffic prediction">
+  <button type="submit">Search</button>
+</form>
+{% if search_error %}<p class="err">{{ search_error }}</p>{% endif %}
+{% if q and not search_error %}
+<table>
+  <tr><th>Similarity</th><th>Title</th><th>Domain</th><th>Status</th></tr>
+  {% for r in results %}
+  <tr>
+    <td>{{ r.similarity }}</td>
+    <td><a href="/papers/{{ r.paper_id }}">{{ r.title }}</a></td>
+    <td>{{ r.domain_name }}</td>
+    <td>{{ r.status }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="4">No results.</td></tr>
+  {% endfor %}
+</table>
+{% endif %}
+{% endblock %}

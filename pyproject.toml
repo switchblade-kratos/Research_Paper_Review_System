@@ -1,0 +1,22 @@
+[project]
+name = "paper-review-system"
+version = "0.1.0"
+description = "Conference paper reviewing system - DBMS Level 3 project"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "psycopg[binary]>=3.2",
+    "psycopg-pool>=3.2",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+    "itsdangerous>=2.2",
+    "bcrypt>=4.2",
+    "python-dotenv>=1.0",
+    "ijson>=3.3",
+    "sentence-transformers>=3.3",
+]
+
+[tool.uv]
+package = false
