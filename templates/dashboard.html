@@ -1,59 +1,72 @@
 {% extends "base.html" %}
+{% from "_macros.html" import status, score %}
 {% block content %}
-<h2>
-  {% if user.role == 'author' %}My papers{% elif user.role == 'reviewer' %}Papers in my domain{% else %}All papers{% endif %}
-</h2>
+<div class="page-head">
+  <div>
+    <h1>{% if user.role == 'author' %}My papers{% elif user.role == 'reviewer' %}Papers in my domain{% else %}All papers{% endif %}</h1>
+    <p>{% if user.role == 'author' %}Track the status of your submissions.{% elif user.role == 'reviewer' %}Open a paper to write or edit your review.{% else %}Every submission across all domains.{% endif %}</p>
+  </div>
+  {% if user.role == 'author' %}<a class="btn" href="/submit">+ Submit paper</a>{% endif %}
+</div>
 
-<form method="get" action="/dashboard" class="filters">
-  <label>Keyword <input name="keyword" value="{{ f.keyword or '' }}"></label>
+<form method="get" action="/dashboard" class="card filters">
+  <label>Keyword <input name="keyword" value="{{ f.keyword or '' }}" placeholder="Search titles and abstracts"></label>
   <label>Status
     <select name="status">
-      <option value="">any</option>
-      {% for s in statuses %}<option value="{{ s }}" {% if f.status == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+      <option value="">Any</option>
+      {% for s in statuses %}<option value="{{ s }}" {% if f.status == s %}selected{% endif %}>{{ s|replace('_', ' ')|capitalize }}</option>{% endfor %}
     </select>
   </label>
   {% if user.role == 'admin' %}
   <label>Domain
     <select name="domain_id">
-      <option value="">any</option>
+      <option value="">Any</option>
       {% for d in domains %}<option value="{{ d.domain_id }}" {% if f.domain_id == d.domain_id|string %}selected{% endif %}>{{ d.name }}</option>{% endfor %}
     </select>
   </label>
   {% endif %}
-  <label>Year from <input name="year_from" size="5" value="{{ f.year_from or '' }}"></label>
-  <label>to <input name="year_to" size="5" value="{{ f.year_to or '' }}"></label>
-  <label>Min score <input name="min_score" size="4" value="{{ f.min_score or '' }}"></label>
+  <label>From year <input name="year_from" inputmode="numeric" value="{{ f.year_from or '' }}" placeholder="2019"></label>
+  <label>To year <input name="year_to" inputmode="numeric" value="{{ f.year_to or '' }}" placeholder="2026"></label>
+  <label>Min score <input name="min_score" inputmode="decimal" value="{{ f.min_score or '' }}" placeholder="0-10"></label>
   <label>Sort
     <select name="sort">
-      {% for s in sorts %}<option value="{{ s }}" {% if f.sort == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+      {% for s in sorts %}<option value="{{ s }}" {% if f.sort == s %}selected{% endif %}>{{ s|capitalize }}</option>{% endfor %}
     </select>
   </label>
-  <button type="submit">Apply</button>
-  <a href="/dashboard">Clear</a>
+  <div class="actions">
+    <button type="submit">Apply</button>
+    <a class="btn ghost" href="/dashboard">Clear</a>
+  </div>
 </form>
 
-{% if f.error %}<p class="err">{{ f.error }}</p>{% endif %}
+{% if f.error %}<div class="flash err">{{ f.error }}</div>{% endif %}
 
-<table>
-  <tr><th>ID</th><th>Title</th><th>Domain</th><th>Status</th><th>Submitted</th><th>Avg score</th><th>Reviews</th></tr>
-  {% for p in papers %}
-  <tr>
-    <td>{{ p.paper_id }}</td>
-    <td><a href="/papers/{{ p.paper_id }}">{{ p.title }}</a></td>
-    <td>{{ p.domain_name }}</td>
-    <td>{{ p.status }}</td>
-    <td>{{ p.submitted_at }}</td>
-    <td>{{ p.avg_score if p.avg_score is not none else '-' }}</td>
-    <td>{{ p.review_count }}</td>
-  </tr>
-  {% else %}
-  <tr><td colspan="7">No papers match.</td></tr>
-  {% endfor %}
-</table>
-
-<p class="pager">
-  {% if page > 1 %}<a href="/dashboard?{{ base_qs }}&page={{ page - 1 }}">&larr; Previous</a>{% endif %}
-  Page {{ page }}
-  {% if has_next %}<a href="/dashboard?{{ base_qs }}&page={{ page + 1 }}">Next &rarr;</a>{% endif %}
-</p>
+<div class="card flush">
+  <table>
+    <thead>
+      <tr><th>Title</th><th>Domain</th><th>Status</th><th>Submitted</th><th class="num">Score</th><th class="num">Reviews</th></tr>
+    </thead>
+    <tbody>
+    {% for p in papers %}
+      <tr>
+        <td class="title"><a href="/papers/{{ p.paper_id }}">{{ p.title }}</a><br><small>#{{ p.paper_id }}</small></td>
+        <td><span class="chip">{{ p.domain_name }}</span></td>
+        <td>{{ status(p.status) }}</td>
+        <td class="muted">{{ p.submitted_at.strftime('%d %b %Y') }}</td>
+        <td class="num">{{ score(p.avg_score) }}</td>
+        <td class="num">{{ p.review_count }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="empty">No papers match these filters.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <div class="pager">
+    <span>Page {{ page }}</span>
+    <span>
+      {% if page > 1 %}<a class="btn ghost" href="/dashboard?{{ base_qs }}&page={{ page - 1 }}">&larr; Previous</a>{% endif %}
+      {% if has_next %}<a class="btn ghost" href="/dashboard?{{ base_qs }}&page={{ page + 1 }}">Next &rarr;</a>{% endif %}
+    </span>
+  </div>
+</div>
 {% endblock %}

@@ -1,0 +1,6 @@
+{% macro status(s) %}<span class="badge s-{{ s }}">{{ s|replace('_', ' ') }}</span>{% endmacro %}
+
+{% macro score(v) -%}
+{%- if v is none -%}<span class="muted">&mdash;</span>
+{%- else -%}<span class="score {{ 'hi' if v >= 7 else 'mid' if v >= 5 else 'lo' }}">{{ v }}</span>{%- endif -%}
+{%- endmacro %}

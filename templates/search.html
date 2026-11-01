@@ -1,25 +1,41 @@
 {% extends "base.html" %}
+{% from "_macros.html" import status %}
 {% block content %}
-<h2>Find relevant papers</h2>
-<p>Describe what you are looking for. Results are ranked by meaning (cosine similarity), not exact words.</p>
-<form method="get" action="/search" class="inline">
-  <input name="q" value="{{ q }}" size="60" placeholder="e.g. graph neural networks for traffic prediction">
-  <button type="submit">Search</button>
+<div class="page-head">
+  <div>
+    <h1>Find relevant papers</h1>
+    <p>Describe what you're looking for. Results are ranked by meaning, not exact words.</p>
+  </div>
+</div>
+
+<form method="get" action="/search" class="card">
+  <div class="searchbar">
+    <input name="q" value="{{ q }}" placeholder="e.g. graph neural networks for traffic prediction" required autofocus>
+    <button type="submit">Search</button>
+  </div>
 </form>
-{% if search_error %}<p class="err">{{ search_error }}</p>{% endif %}
-{% if q and not search_error %}
-<table>
-  <tr><th>Similarity</th><th>Title</th><th>Domain</th><th>Status</th></tr>
+
+{% if search_error %}<div class="flash err">{{ search_error }}</div>{% endif %}
+
+{% if not q.strip() %}
+<div class="card empty">Type a topic or a short description above, then press Search.</div>
+{% elif not search_error %}
+<div class="card flush">
+  <div class="card-head"><h2>Results</h2><small>{{ results|length }} most similar</small></div>
   {% for r in results %}
-  <tr>
-    <td>{{ r.similarity }}</td>
-    <td><a href="/papers/{{ r.paper_id }}">{{ r.title }}</a></td>
-    <td>{{ r.domain_name }}</td>
-    <td>{{ r.status }}</td>
-  </tr>
+  <div class="result">
+    <div class="body">
+      <a href="/papers/{{ r.paper_id }}">{{ r.title }}</a>
+      <div class="meta" style="margin-top:6px"><span class="chip">{{ r.domain_name }}</span>{{ status(r.status) }}</div>
+    </div>
+    <div class="simbar">
+      <div class="track"><div class="fill" style="width: {{ [[r.similarity * 100, 0]|max, 100]|min }}%"></div></div>
+      <small>{{ '%.1f'|format(r.similarity * 100) }}% match</small>
+    </div>
+  </div>
   {% else %}
-  <tr><td colspan="4">No results.</td></tr>
+  <div class="empty">No results.</div>
   {% endfor %}
-</table>
+</div>
 {% endif %}
 {% endblock %}

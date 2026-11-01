@@ -1,17 +1,20 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Submit a paper</h2>
-<form method="post" action="/submit" class="narrow">
-  <label>Title <input name="title" minlength="5" required></label>
+<div class="page-head">
+  <div>
+    <h1>Submit a paper</h1>
+    <p>You'll be listed as the first author. Co-authors must already have accounts.</p>
+  </div>
+</div>
+<form method="post" action="/submit" class="card" style="max-width: 760px;">
+  <label>Title <input name="title" minlength="5" required placeholder="Paper title"></label>
   <label>Domain
     <select name="domain_id" required>
       {% for d in domains %}<option value="{{ d.domain_id }}">{{ d.name }}</option>{% endfor %}
     </select>
   </label>
-  <label>Abstract <textarea name="abstract" rows="8" minlength="20" required></textarea></label>
-  <label>Co-author emails (comma separated, must be registered authors)
-    <input name="coauthors">
-  </label>
-  <button type="submit">Submit</button>
+  <label>Abstract <textarea name="abstract" rows="9" minlength="20" required placeholder="At least 20 characters"></textarea></label>
+  <label>Co-author emails <input name="coauthors" placeholder="Comma separated, optional"></label>
+  <button type="submit">Submit paper</button>
 </form>
 {% endblock %}

@@ -3,27 +3,37 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Paper Review System{% endblock %}</title>
+  <title>{% block title %}Paper Review{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
-<header>
-  <strong>Paper Review System</strong>
-  {% if user %}
-  <nav>
-    <a href="/dashboard">Dashboard</a>
-    <a href="/search">Search</a>
-    {% if user.role == 'author' %}<a href="/submit">Submit paper</a>{% endif %}
-    {% if user.role == 'admin' %}<a href="/admin">Admin</a>{% endif %}
-    <span class="who">{{ user.name }} ({{ user.role }})</span>
-    <a href="/logout">Log out</a>
-  </nav>
-  {% endif %}
+<body class="{% block body_class %}{% endblock %}">
+{% block layout %}
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="/dashboard"><span class="brand-mark">PR</span>Paper Review</a>
+    {% if user %}
+    {% set path = request.url.path %}
+    <nav class="nav">
+      <a href="/dashboard" class="{{ 'active' if path.startswith('/dashboard') or path.startswith('/papers') }}">Dashboard</a>
+      <a href="/search" class="{{ 'active' if path.startswith('/search') }}">Search</a>
+      {% if user.role == 'author' %}<a href="/submit" class="{{ 'active' if path.startswith('/submit') }}">Submit paper</a>{% endif %}
+      {% if user.role == 'admin' %}<a href="/admin" class="{{ 'active' if path.startswith('/admin') }}">Reports</a>{% endif %}
+    </nav>
+    <div class="userbox">
+      <div class="who">{{ user.name }}<span>{{ user.role }}</span></div>
+      <div class="avatar">{{ user.name[:1] }}</div>
+      <a class="btn ghost" href="/logout">Log out</a>
+    </div>
+    {% endif %}
+  </div>
 </header>
-<main>
-  {% if msg %}<p class="msg">{{ msg }}</p>{% endif %}
-  {% if err %}<p class="err">{{ err }}</p>{% endif %}
+<main class="page">
+  {% if msg %}<div class="flash ok">{{ msg }}</div>{% endif %}
+  {% if err %}<div class="flash err">{{ err }}</div>{% endif %}
   {% block content %}{% endblock %}
 </main>
+{% endblock %}
 </body>
 </html>

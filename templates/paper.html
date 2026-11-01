@@ -1,46 +1,78 @@
 {% extends "base.html" %}
+{% from "_macros.html" import status, score %}
 {% block content %}
-<p><a href="/dashboard">&larr; Back</a></p>
-<h2>{{ paper.title }}</h2>
-<p class="meta">
-  Paper #{{ paper.paper_id }} &middot; {{ paper.domain_name }} &middot; status: <b>{{ paper.status }}</b>
-  &middot; submitted {{ paper.submitted_at }}
-  &middot; avg score: {{ paper.avg_score if paper.avg_score is not none else '-' }} ({{ paper.review_count }} reviews)
-</p>
-<p><b>Authors:</b>
-  {% for a in paper.authors %}{{ a.full_name }}{% if not loop.last %}, {% endif %}{% endfor %}
-</p>
+<a class="back" href="/dashboard">&larr; Back to papers</a>
 
-<h3>Abstract</h3>
-<p class="abstract">{{ paper.abstract }}</p>
+<div class="grid-2">
+  <div>
+    <div class="card">
+      <div>{{ status(paper.status) }} <span class="chip">{{ paper.domain_name }}</span></div>
+      <h1 class="paper-title">{{ paper.title }}</h1>
+      <div class="meta">
+        <span>Paper #{{ paper.paper_id }}</span>
+        <span>Submitted {{ paper.submitted_at.strftime('%d %b %Y') }}</span>
+      </div>
+      <div class="authors">
+        {% for a in paper.authors %}<span class="author">{{ a.full_name }}</span>{% endfor %}
+      </div>
+    </div>
 
-{% if user.role == 'admin' %}
-<h3>Change status</h3>
-<form method="post" action="/papers/{{ paper.paper_id }}/status" class="inline">
-  <select name="status">
-    {% for s in statuses %}<option value="{{ s }}" {% if paper.status == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
-  </select>
-  <button type="submit">Update</button>
-</form>
-{% endif %}
+    <div class="card">
+      <h2>Abstract</h2>
+      <p class="abstract">{{ paper.abstract }}</p>
+    </div>
 
-<h3>Reviews</h3>
-{% for r in paper.reviews %}
-<div class="review">
-  <b>{% if user.role == 'author' %}Reviewer {{ loop.index }}{% else %}{{ r.reviewer }}{% endif %}</b>
-  &middot; score {{ r.score }}/10 &middot; {{ r.created_at.strftime('%Y-%m-%d') }}
-  <p>{{ r.comments }}</p>
+    <div class="card">
+      <h2>Reviews <small>({{ paper.review_count }})</small></h2>
+      {% for r in paper.reviews %}
+      <div class="review">
+        <div class="ring">{{ score(r.score) }}</div>
+        <div>
+          <strong>{% if user.role == 'author' %}Reviewer {{ loop.index }}{% else %}{{ r.reviewer }}{% endif %}</strong>
+          <small>&middot; {{ r.created_at.strftime('%d %b %Y') }}</small>
+          <p>{{ r.comments }}</p>
+        </div>
+      </div>
+      {% else %}
+      <p class="muted">No reviews yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <aside>
+    <div class="tiles" style="grid-template-columns: 1fr 1fr;">
+      <div class="tile"><div class="label">Avg score</div><div class="value">{{ score(paper.avg_score) }}</div></div>
+      <div class="tile"><div class="label">Reviews</div><div class="value">{{ paper.review_count }}</div></div>
+    </div>
+
+    {% if user.role == 'admin' %}
+    <div class="card">
+      <h2>Decision</h2>
+      <form method="post" action="/papers/{{ paper.paper_id }}/status">
+        <label>Status
+          <select name="status">
+            {% for s in statuses %}<option value="{{ s }}" {% if paper.status == s %}selected{% endif %}>{{ s|replace('_', ' ')|capitalize }}</option>{% endfor %}
+          </select>
+        </label>
+        <button type="submit" class="block">Update status</button>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if user.role == 'reviewer' %}
+    <div class="card">
+      <h2>{% if my_review %}Edit your review{% else %}Your review{% endif %}</h2>
+      <form method="post" action="/papers/{{ paper.paper_id }}/review">
+        <label>Score (1&ndash;10)
+          <input type="number" name="score" min="1" max="10" required value="{{ my_review.score if my_review else '' }}">
+        </label>
+        <label>Comments
+          <textarea name="comments" rows="6" required placeholder="Strengths, weaknesses, suggestions...">{{ my_review.comments if my_review else '' }}</textarea>
+        </label>
+        <button type="submit" class="block">Save review</button>
+      </form>
+    </div>
+    {% endif %}
+  </aside>
 </div>
-{% else %}
-<p>No reviews yet.</p>
-{% endfor %}
-
-{% if user.role == 'reviewer' %}
-<h3>{% if my_review %}Edit your review{% else %}Write a review{% endif %}</h3>
-<form method="post" action="/papers/{{ paper.paper_id }}/review" class="narrow">
-  <label>Score (1-10) <input type="number" name="score" min="1" max="10" required value="{{ my_review.score if my_review else '' }}"></label>
-  <label>Comments <textarea name="comments" rows="5" required>{{ my_review.comments if my_review else '' }}</textarea></label>
-  <button type="submit">Save review</button>
-</form>
-{% endif %}
 {% endblock %}

@@ -1,66 +1,94 @@
 {% extends "base.html" %}
+{% from "_macros.html" import status, score %}
 {% block content %}
-<h2>Admin</h2>
+<div class="page-head">
+  <div><h1>Reports</h1><p>Statistics across all domains, reviewers and decisions.</p></div>
+</div>
 
-<h3>Papers by status</h3>
-<table>
-  <tr><th>Status</th><th>Count</th></tr>
-  {% for s in r.status_counts %}<tr><td>{{ s.status }}</td><td>{{ s.n }}</td></tr>{% endfor %}
-</table>
-
-<h3>Domain statistics <small>(CTE)</small></h3>
-<table>
-  <tr><th>Domain</th><th>Total</th><th>Accepted</th><th>Rejected</th><th>Unreviewed</th><th>Acceptance %</th></tr>
-  {% for d in r.domain_stats %}
-  <tr><td>{{ d.domain }}</td><td>{{ d.total }}</td><td>{{ d.accepted }}</td><td>{{ d.rejected }}</td>
-      <td>{{ d.unreviewed }}</td><td>{{ d.acceptance_pct if d.acceptance_pct is not none else '-' }}</td></tr>
+<div class="tiles">
+  {% for s in r.status_counts %}
+  <div class="tile"><div class="label">{{ s.status|replace('_', ' ') }}</div><div class="value">{{ s.n }}</div></div>
   {% endfor %}
-</table>
+</div>
 
-<h3>Reviewer workload <small>(GROUP BY + HAVING)</small></h3>
-<form method="get" action="/admin" class="inline">
-  <label>Only reviewers with at least <input type="number" name="min_reviews" min="1" value="{{ min_reviews }}" size="3"> reviews</label>
-  <button type="submit">Apply</button>
-</form>
-<table>
-  <tr><th>Reviewer</th><th>Domain</th><th>Reviews</th><th>Avg given</th><th>Lowest</th><th>Highest</th></tr>
-  {% for w in r.workload %}
-  <tr><td>{{ w.reviewer }}</td><td>{{ w.domain }}</td><td>{{ w.reviews_done }}</td>
-      <td>{{ w.avg_score_given }}</td><td>{{ w.lowest }}</td><td>{{ w.highest }}</td></tr>
-  {% endfor %}
-</table>
+<div class="card flush">
+  <div class="card-head"><h2>Domain statistics</h2><small>CTE</small></div>
+  <table>
+    <thead><tr><th>Domain</th><th class="num">Total</th><th class="num">Accepted</th><th class="num">Rejected</th><th class="num">Unreviewed</th><th class="num">Acceptance</th></tr></thead>
+    <tbody>
+    {% for d in r.domain_stats %}
+      <tr><td><span class="chip">{{ d.domain }}</span></td><td class="num">{{ d.total }}</td><td class="num">{{ d.accepted }}</td>
+          <td class="num">{{ d.rejected }}</td><td class="num">{{ d.unreviewed }}</td>
+          <td class="num">{{ (d.acceptance_pct|string + '%') if d.acceptance_pct is not none else '—' }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
 
-<h3>Papers above their domain's average <small>(nested subquery)</small></h3>
-<table>
-  <tr><th>ID</th><th>Title</th><th>Domain</th><th>Avg score</th></tr>
-  {% for p in r.above_avg %}
-  <tr><td>{{ p.paper_id }}</td><td><a href="/papers/{{ p.paper_id }}">{{ p.title }}</a></td>
-      <td>{{ p.domain }}</td><td>{{ p.avg_score }}</td></tr>
-  {% endfor %}
-</table>
+<div class="card flush">
+  <div class="card-head">
+    <h2>Reviewer workload</h2>
+    <form method="get" action="/admin" style="display:flex; gap:8px; align-items:center;">
+      <small>GROUP BY + HAVING &middot; at least</small>
+      <input type="number" name="min_reviews" min="1" value="{{ min_reviews }}" style="width:70px; margin:0; padding:6px 8px;">
+      <button type="submit" class="btn ghost">Apply</button>
+    </form>
+  </div>
+  <table>
+    <thead><tr><th>Reviewer</th><th>Domain</th><th class="num">Reviews</th><th class="num">Avg given</th><th class="num">Lowest</th><th class="num">Highest</th></tr></thead>
+    <tbody>
+    {% for w in r.workload %}
+      <tr><td>{{ w.reviewer }}</td><td><span class="chip">{{ w.domain }}</span></td><td class="num">{{ w.reviews_done }}</td>
+          <td class="num">{{ score(w.avg_score_given) }}</td><td class="num">{{ w.lowest }}</td><td class="num">{{ w.highest }}</td></tr>
+    {% else %}<tr><td colspan="6" class="empty">No reviewers match.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
 
-<h3>Create reviewer / admin</h3>
-<form method="post" action="/admin/users" class="narrow">
-  <label>Full name <input name="full_name" required></label>
-  <label>Email <input type="email" name="email" required></label>
-  <label>Password <input type="password" name="password" minlength="6" required></label>
-  <label>Role
-    <select name="role"><option value="reviewer">reviewer</option><option value="admin">admin</option></select>
-  </label>
-  <label>Domain (required for reviewers)
-    <select name="domain_id">
-      <option value="">none</option>
-      {% for d in domains %}<option value="{{ d.domain_id }}">{{ d.name }}</option>{% endfor %}
-    </select>
-  </label>
-  <button type="submit">Create</button>
-</form>
+<div class="grid-2">
+  <div class="card flush">
+    <div class="card-head"><h2>Above their domain's average</h2><small>Nested subquery</small></div>
+    <table>
+      <thead><tr><th>Title</th><th>Domain</th><th class="num">Score</th></tr></thead>
+      <tbody>
+      {% for p in r.above_avg %}
+        <tr><td class="title"><a href="/papers/{{ p.paper_id }}">{{ p.title }}</a></td><td><span class="chip">{{ p.domain }}</span></td>
+            <td class="num">{{ score(p.avg_score) }}</td></tr>
+      {% else %}<tr><td colspan="3" class="empty">Nothing yet.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
 
-<h3>Recent changes <small>(audit log, filled by triggers)</small></h3>
-<table>
-  <tr><th>Table</th><th>Action</th><th>Row</th><th>When</th></tr>
-  {% for a in r.audit %}
-  <tr><td>{{ a.table_name }}</td><td>{{ a.action }}</td><td>{{ a.row_id }}</td><td>{{ a.changed_at.strftime('%Y-%m-%d %H:%M') }}</td></tr>
-  {% endfor %}
-</table>
+  <div class="card">
+    <h2>Create reviewer or admin</h2>
+    <form method="post" action="/admin/users">
+      <label>Full name <input name="full_name" required></label>
+      <label>Email <input type="email" name="email" required></label>
+      <label>Password <input type="password" name="password" minlength="6" required></label>
+      <label>Role
+        <select name="role"><option value="reviewer">Reviewer</option><option value="admin">Admin</option></select>
+      </label>
+      <label>Domain <small>(required for reviewers)</small>
+        <select name="domain_id">
+          <option value="">None</option>
+          {% for d in domains %}<option value="{{ d.domain_id }}">{{ d.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <button type="submit" class="block">Create account</button>
+    </form>
+  </div>
+</div>
+
+<div class="card flush">
+  <div class="card-head"><h2>Recent changes</h2><small>Audit log, written by triggers</small></div>
+  <table>
+    <thead><tr><th>Table</th><th>Action</th><th class="num">Row</th><th>When</th></tr></thead>
+    <tbody>
+    {% for a in r.audit %}
+      <tr><td>{{ a.table_name }}</td><td><span class="badge s-submitted">{{ a.action|lower }}</span></td>
+          <td class="num">{{ a.row_id }}</td><td class="muted">{{ a.changed_at.strftime('%d %b %Y, %H:%M') }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endblock %}
