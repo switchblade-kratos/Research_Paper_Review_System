@@ -13,6 +13,7 @@ import re
 
 import ijson
 import psycopg
+from psycopg.errors import RaiseException
 
 from app.auth import hash_password
 from app.config import DATABASE_URL, EMBED_DIM
@@ -75,6 +76,8 @@ class Loader:
         self.domains, self.authors, self.seen = {}, {}, set()
         self.pw_hash = hash_password(AUTHOR_PASSWORD)   # one hash reused: bcrypt per row is too slow
         self.next_email = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] + 1
+        # titles already in the DB, normalised the same way as the duplicate-title trigger
+        self.titles = {t for (t,) in conn.execute("SELECT norm_title(title) FROM papers")}
         self.stats = {"papers": 0, "skipped": 0, "no_embedding": 0}
 
     def domain_id(self, name):
@@ -103,6 +106,21 @@ class Loader:
         if not batch:
             return
         self.add_authors([n for rec in batch for n in rec["authors"]])
+        self.conn.commit()          # keep authors even if some papers below are rejected
+        try:
+            self.insert_papers(batch)
+        except RaiseException:
+            # the duplicate-title trigger rejected a paper: redo this batch one paper at a time
+            self.conn.rollback()
+            for rec in batch:
+                try:
+                    self.insert_papers([rec])
+                except RaiseException:
+                    self.conn.rollback()
+                    self.stats["skipped"] += 1
+        print(f"  loaded {self.stats['papers']} papers", flush=True)
+
+    def insert_papers(self, batch):
         with self.conn.cursor() as cur:
             cur.executemany(
                 "INSERT INTO papers(source_id, title, abstract, domain_id, submitted_at, embedding) "
@@ -117,7 +135,6 @@ class Loader:
             cur.executemany("INSERT INTO paper_authors(paper_id, user_id, author_order) VALUES (%s, %s, %s)", links)
         self.conn.commit()
         self.stats["papers"] += len(batch)
-        print(f"  loaded {self.stats['papers']} papers", flush=True)
 
     def run(self):
         a, batch = self.args, []
@@ -131,6 +148,11 @@ class Loader:
             if len(title) < 5 or len(abstract) < 20 or not authors or (sid and sid in self.seen):
                 self.stats["skipped"] += 1
                 continue
+            title = title[:500]
+            if title.lower() in self.titles:      # same title as an earlier paper: skip it
+                self.stats["skipped"] += 1
+                continue
+            self.titles.add(title.lower())
             if sid:
                 self.seen.add(sid)
             vec = to_vector(raw.get(a.embedding_field))

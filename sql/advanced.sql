@@ -82,6 +82,29 @@ FOR EACH ROW EXECUTE FUNCTION trg_audit('paper_id');
 CREATE TRIGGER reviews_audit AFTER INSERT OR UPDATE OR DELETE ON reviews
 FOR EACH ROW EXECUTE FUNCTION trg_audit('review_id');
 
+-- TRIGGER 5: reject a paper whose title already exists (case and extra spaces ignored)
+CREATE OR REPLACE FUNCTION norm_title(t TEXT) RETURNS TEXT
+LANGUAGE sql IMMUTABLE AS $$
+    SELECT lower(regexp_replace(trim(t), '\s+', ' ', 'g'))
+$$;
+
+-- lets the trigger's lookup use an index instead of scanning every paper
+CREATE INDEX idx_papers_title_norm ON papers (norm_title(title));
+
+CREATE OR REPLACE FUNCTION trg_check_duplicate_title() RETURNS TRIGGER
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM papers
+               WHERE norm_title(title) = norm_title(NEW.title)
+                 AND paper_id <> NEW.paper_id) THEN
+        RAISE EXCEPTION 'A paper titled "%" already exists', NEW.title;
+    END IF;
+    RETURN NEW;
+END $$;
+
+CREATE TRIGGER papers_unique_title BEFORE INSERT OR UPDATE OF title ON papers
+FOR EACH ROW EXECUTE FUNCTION trg_check_duplicate_title();
+
 -- STORED PROCEDURE 1 (TRANSACTION): submit a paper and its authors together.
 -- If any co-author email is unknown, the whole submission is rolled back.
 CREATE OR REPLACE PROCEDURE submit_paper(
